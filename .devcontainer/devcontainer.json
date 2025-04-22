@@ -1,0 +1,15 @@
+{
+    "name": "nix-dotfiles",
+    "image": "ghcr.io/takao/nix-dev:latest",
+    "features": {
+      "ghcr.io/devcontainers/features/nix:1": {}           // nixd preinstalled :contentReference[oaicite:5]{index=5}
+    },
+    "postCreateCommand": "home-manager switch --flake /workspaces/dotfiles",
+    "customizations": {
+      "vscode": {
+        "settings": { "terminal.integrated.defaultProfile.linux": "fish" },
+        "extensions": [ "tamasfe.even-better-toml", "mkhl.direnv" ]
+      }
+    }
+  }
+  

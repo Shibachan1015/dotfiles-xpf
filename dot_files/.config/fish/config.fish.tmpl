@@ -1,0 +1,7 @@
+set -gx EDITOR nvim
+{{ if eq .chezmoi.os "windows" -}}
+# WSL 上の Windows パス補完
+function __wslpath
+  wslpath -w $argv
+end
+{{ end }}
