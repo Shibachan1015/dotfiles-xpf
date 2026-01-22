@@ -1,0 +1,27 @@
+{{- $osid := .chezmoi.os -}}
+{{- if eq .chezmoi.os "linux" -}}
+{{-   if (.chezmoi.kernel.osrelease | lower | contains "microsoft") -}}
+{{-     $osid = "wsl" -}}
+{{-   end -}}
+{{- end }}
+
+[data]
+    name = "takao"
+    email = "siba1015@cpost.plala.or.jp"
+    github_user = "shibachan1015"
+
+    osid = {{ $osid | quote }}
+    is_wsl = {{ eq $osid "wsl" }}
+    is_darwin = {{ eq .chezmoi.os "darwin" }}
+    is_linux = {{ and (eq .chezmoi.os "linux") (ne $osid "wsl") }}
+
+    {{- if eq $osid "wsl" }}
+    ssh_key = "xps_rsa"
+    {{- else if eq .chezmoi.os "darwin" }}
+    ssh_key = "id_ed25519"
+    {{- else }}
+    ssh_key = "id_rsa"
+    {{- end }}
+
+[edit]
+    command = "nvim"

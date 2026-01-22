@@ -1,124 +1,139 @@
-# Universal Dotfiles & Dev Environment
+# Dotfiles
 
-> **Works on macOS (Apple Silicon & Intel), Windows 11 + WSL2, and any Docker‑based workspace (VS Code Dev Container / GitHub Codespaces).**
+> zsh (oh-my-zsh + Powerlevel10k) をメインシェルとした WSL/macOS 両対応の dotfiles 管理環境
 
----
+## 概要
 
-## 1  Why this repo?
+| ツール | 役割 |
+|--------|------|
+| **chezmoi** | OS別テンプレート、シークレット暗号化、シンボリックリンク管理 |
+| **Nix/Home-Manager** | パッケージ管理、エディタ設定の宣言的管理 |
+| **nix-darwin** | macOSシステム設定（Homebrew含む） |
 
-| Goal | How it’s achieved |
-|-----|------------------|
-| **Dotfile templating & secrets** | [`chezmoi`](https://www.chezmoi.io/) |
-| **Declarative packages & editor plugins** | [`Nix` + `home‑manager`](https://nix-community.github.io/home-manager/) |
-| **Identical Linux everywhere** | VS Code **Dev Container** / **Remote‑WSL** |
-
-Everything lives in one Git repo, bootstrapped by a single script. Bring‑up time on a fresh machine is ≈3 minutes (network speed permitting).
-
----
-
-## 2  Repository layout
+## ディレクトリ構造
 
 ```
-▾ dotfiles/
-  bootstrap.sh          # One‑liner setup for new hosts
-  flake.nix             # Nix flake entry‑point
-  home.nix              # Common Home Manager module
-  darwin.nix            # macOS‑specific options (nix‑darwin)
-  .chezmoirc.tmpl       # chezmoi config – template aware
-  ▾ dot_files/          # Actual dotfiles (can be *.tmpl)
-  ▾ .devcontainer/
-    devcontainer.json   # VS Code Dev Container config
-    Dockerfile          # Pre‑baked Nix image for speed
+~/dotfiles/
+├── README.md
+├── bootstrap.sh                   # ワンコマンドインストーラー
+│
+├── .chezmoi.toml.tmpl             # OS検出・設定
+├── .chezmoiexternal.toml          # 外部依存（oh-my-zsh等）
+├── .chezmoiignore                 # OS別除外ルール
+│
+├── dot_zshrc.tmpl                 # zsh設定（メイン・テンプレート）
+├── dot_p10k.zsh                   # Powerlevel10k設定
+├── dot_config/                    # ~/.config配下
+│
+└── nix/                           # Nix設定
+    ├── flake.nix                  # メインフレーク
+    ├── home/
+    │   ├── default.nix            # 共通設定
+    │   ├── shells.nix             # シェル設定
+    │   ├── editors.nix            # エディタ設定
+    │   ├── wsl.nix                # WSL固有
+    │   └── darwin-home.nix        # macOS固有
+    └── darwin/
+        ├── default.nix            # macOSシステム設定
+        └── homebrew.nix           # Homebrew管理
 ```
 
----
+## クイックスタート
 
-## 3  Quick Start
-
-### 3‑1  New machine bootstrap
+### 新しいマシンでのセットアップ
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/<you>/dotfiles/main/bootstrap.sh | bash
+curl -fsSL https://raw.githubusercontent.com/shibachan1015/dotfiles/main/bootstrap.sh | bash
 ```
 
-What the script does:
-1. **Install & run `chezmoi`** → dotfiles placed under `$HOME`.
-2. **Install multi‑user Nix** (`--daemon`) – required for WSL/macOS.
-3. **Activate Home‑Manager**: `home-manager switch --flake ~/dotfiles`.
+### 手動セットアップ
 
-> **macOS**: after Nix install, `nix-darwin switch --flake ~/dotfiles` gives system‑wide settings (keyboard, brew casks, etc.).
->
-> **Windows**: run inside *Ubuntu‑22.04* on WSL2. Enable systemd by adding `systemd=true` to `/etc/wsl.conf`, then restart WSL.
+```bash
+# 1. chezmoi インストール
+sh -c "$(curl -fsLS get.chezmoi.io)"
 
-### 3‑2  Dev Container / Codespaces
+# 2. dotfiles 適用
+chezmoi init --apply shibachan1015/dotfiles
 
-1. Open the repo in VS Code → *“Reopen in Container”* prompt appears.
-2. The provided `Dockerfile` + `devcontainer.json` install Nix & run `home-manager switch` automatically.
-3. Fish shell + Neovim + pinned CLI tools are ready to use.
+# 3. Nix インストール (マルチユーザー)
+sh <(curl -L https://nixos.org/nix/install) --daemon
 
----
+# 4. Home Manager 適用
+nix run home-manager/master -- switch --flake ~/dotfiles/nix#$(whoami)
+```
 
-## 4  Secrets & private data
+## OS別設定
 
-* Any file ending in `.age` or `.gpg` is encrypted and safe to commit publicly.
-* Decryption happens on‑the‑fly with `chezmoi`. Keep your private key on a USB YubiKey or `~/.config/age/keys.txt` **outside** the repo.
-* Example: `dot_files/.ssh/id_ed25519` ⇒ committed as `id_ed25519.age`.
+### WSL (Windows Subsystem for Linux)
 
----
+- **SSH Agent**: keychain で SSH エージェントを永続化
+- **ブラウザ**: wslview で Windows ブラウザを使用
+- **X11転送**: Windows 側の X Server (VcXsrv等) と連携可能
 
-## 5  Daily workflow
+### macOS
 
-| Action | Command |
-|--------|---------|
-| **Update packages/plugins** | `nix flake update` → `home-manager switch --flake .` |
-| **Add new global tool** | Edit `home.nix` → `home-manager switch` |
-| **Edit dotfile** | Modify under `dot_files/` → `chezmoi apply` |
-| **Push to GitHub** | `git commit -am "feat: ..." && git push` |
+- **SSH Agent**: 1Password SSH Agent を使用
+- **Homebrew**: nix-darwin で宣言的に管理
+- **システム設定**: Dock、Finder、キーボードなどを自動設定
 
-Codespaces/WSL containers only need `git pull && home-manager switch` to sync.
+## 主要な設定
 
----
+### シェル (zsh)
 
-## 6  Troubleshooting
+- **テーマ**: Powerlevel10k (rainbow スタイル)
+- **プラグイン**:
+  - zsh-autosuggestions (コマンド補完)
+  - zsh-syntax-highlighting (シンタックスハイライト)
 
-| Symptom | Fix |
-|---------|-----|
-| **Flake lock gigantic** | `nix flake lock --update-input nixpkgs --recreate-lock-file` |
-| **Neovim Treesitter build fails (mac M‑series)** | Add `libiconv` & `pkg-config` to `extraPackages` |
-| **Fish completion broken** | Ensure `direnv hook fish | source` is in `config.fish` |
-| **Dev Container slow to build** | Push pre‑built image to `ghcr.io` and reference it in `devcontainer.json` |
-| **Corporate proxy stalls Nix** | `nix.settings.http-connections = 0` in `flake.nix` |
+### エイリアス
 
----
+```bash
+# Claude Code
+cc   # claude
+ccc  # claude --continue
+ccd  # claude --dangerously-skip-permissions
+ccdc # claude --dangerously-skip-permissions --continue
+ccup # Claude Code アップグレード
 
-## 7  FAQ
+# Git
+g    # git
+lg   # lazygit
 
-### Q : *Can I swap fish for zsh?*
-Add `programs.zsh.enable = true;` and flip default shell in `home.nix`.
+# その他
+vim  # nvim
+ll   # ls -l
+la   # ls -la
+```
 
-### Q : *Do I **need** Docker on macOS?*
-No. Native macOS runs via `nix-darwin`. Docker is only for isolated projects or Codespaces.
+### パッケージ (Nix で管理)
 
-### Q : *What about ARM Linux servers?*
-Add `aarch64-linux` to the `systems` array in `flake.nix`; everything else stays the same.
+- **開発ツール**: git, gh, delta, lazygit, ripgrep, fd, jq, fzf, bat, eza
+- **エディタ**: neovim (+ LSP, treesitter)
+- **シェルツール**: tmux, direnv, starship
 
----
+## 日常的な操作
 
-## 8  Contributing / Extending
+| 操作 | コマンド |
+|------|----------|
+| dotfiles を更新 | `chezmoi update` |
+| dotfiles を適用 | `chezmoi apply` |
+| パッケージを更新 | `cd ~/dotfiles/nix && nix flake update` |
+| Home Manager を適用 | `home-manager switch --flake ~/dotfiles/nix` |
+| 変更をプレビュー | `chezmoi diff` |
 
-1. Fork and clone the repo.
-2. Make your edits **only** in `dot_files/`, `home.nix`, or `.devcontainer/`.
-3. Test with `nix develop --command fish` locally; if it works there, it will work everywhere.
+## 検証方法
 
-PRs are welcome! Please run `./scripts/lint.sh` before pushing.
+```bash
+# 1. dry-run で変更内容を確認
+chezmoi apply --dry-run
 
----
+# 2. 適用
+chezmoi apply
 
-## 9  License
+# 3. SSH 接続テスト
+ssh -T git@github.com
+```
 
-All code and configs are MIT‑licensed. Encrypted secrets belong to you – do **not** push your private decryption keys.
+## ライセンス
 
----
-
-Happy hacking – may your environments finally behave the same wherever you open a terminal ✨
-
+MIT

@@ -1,0 +1,40 @@
+# chezmoi ignore file
+# Files and directories listed here will not be managed by chezmoi
+
+# README and documentation
+README.md
+LICENSE
+
+# Bootstrap and CI
+bootstrap.sh
+.github/
+
+# Nix configuration (managed separately)
+nix/
+flake.nix
+flake.lock
+home.nix
+darwin.nix
+
+# Dev Container
+.devcontainer/
+
+# Git
+.git/
+.gitignore
+
+# Editor
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS-specific ignores
+{{ if not .is_darwin }}
+# Ignore macOS-specific files on non-macOS
+Library/
+{{ end }}
+
+{{ if not .is_wsl }}
+# Ignore WSL-specific files on non-WSL
+{{ end }}
